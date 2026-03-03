@@ -1,43 +1,29 @@
-# PLAN — APP1 Morpion IA
+# PLAN - APP1 Morpion IA
 
-## 1) Compréhension du problème
-- Définir le périmètre : morpion 3x3 avec IA Minimax.
-- Identifier les sorties attendues (scores, suites idéales, modes de jeu, niveaux).
-- Clarifier les contraintes de complexité (profondeur de recherche).
+## 1) Perimetre actuel
+- Jeu de morpion 3x3 avec interface graphique Tkinter uniquement.
+- IA basee sur Minimax avec elagage alpha-beta.
+- Modes de jeu: Joueur vs IA, Joueur vs Joueur, IA vs IA.
+- Difficulte IA de 1 a 9 avec profils:
+  - `Simple` (1-3): erreurs volontaires.
+  - `Intermediaire` (4-8): jeu de plus en plus solide.
+  - `Impossible` (9): recherche complete, tres fort.
 
-## 2) Découpage technique
-- Représentation du plateau : liste de 9 cases.
-- Génération d’arbre : expansion des coups possibles.
-- Évaluation : score terminal + heuristique intermédiaire.
-- Minimax : propagation des scores.
-- Interface : GUI (Tkinter) uniquement.
+## 2) Decoupage technique
+- `interface.py`: gestion UI, tours, statuts, scores et fin de partie.
+- `ia.py`: evaluation des coups et selection selon le profil de niveau.
+- `regles.py`: detection victoire/nul + calcul de score heuristique.
+- `outils.py`: utilitaires (plateau vide, copie, joueur suivant, coups possibles).
 
-## 3) Plan d’action (phases)
-### A. Séance “aller”
-- Répartition des rôles.
-- Lecture du sujet et identification des objectifs.
-- Liste des questions/risques.
-- Plan de livrables.
+## 3) Plan d'action
+1. Stabiliser les regles de jeu et les transitions de tours.
+2. Renforcer le comportement IA par niveau de difficulte.
+3. Assurer une UX fluide (blocages evites, relance auto apres nul).
+4. Maintenir une documentation simple et coherente (README + PLAN).
 
-### B. Travail individuel
-- Implémenter fonctions clés (règles, minimax, évaluation).
-- Préparer exemples/explications.
-- Tests simples et cas limites.
-
-### C. Séance “retour”
-- Mise en commun des résultats.
-- Validation des fonctionnalités.
-- Finalisation des livrables (README, PLAN, KANBAN).
-
-## 4) Backlog priorisé
-1. IA Minimax fonctionnelle + évaluation.
-2. Modes de jeu (JvJ, JvIA, IAvIA).
-3. Affichage scores d’une génération + min/max.
-4. Suite idéale de coups (IA gagne / adversaire gagne).
-5. Niveaux de difficulté (profondeur).
-6. Bonus : aligner 4.
-
-## 5) Tests à prévoir
-- Victoire IA / victoire joueur / match nul.
-- Profondeur faible vs élevée.
-- Cas limites : plateau plein, coup illegal, clic invalide.
+## 4) Verifications cibles
+- Le jeu se lance avec `python3 interface.py`.
+- Aucun mode terminal n'est present dans le depot.
+- Niveau `Simple`: l'IA commet des erreurs regulieres.
+- Niveau `Impossible`: l'IA ne laisse pas de victoire facile.
+- En cas de match nul: nouvelle partie automatique.
