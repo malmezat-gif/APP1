@@ -213,8 +213,10 @@ class MorpionApp:
             # On met a jour le texte du statut.
             self.statut_var.set(f"Tour de {self.joueur_courant} ({role})")
 
-        # On affiche la profondeur IA choisie avec le slider.
-        self.niveau_label_var.set(f"Niveau IA: {self.niveau_var.get()}")
+        # On affiche la valeur du niveau avec son profil lisible.
+        niveau = self.niveau_var.get()
+        nom_niveau = ia.nom_niveau(niveau)
+        self.niveau_label_var.set(f"Niveau IA: {niveau} ({nom_niveau})")
         # On affiche les scores cumules X, O et Nuls.
         self.score_var.set(
             # Texte formate des scores.
@@ -263,7 +265,15 @@ class MorpionApp:
         self._mettre_a_jour_labels(message)
         # On rafraichit l'etat des boutons.
         self._rafraichir_plateau()
-        # On affiche une popup de fin de partie.
+
+        # En cas de match nul, on evite la popup modale (bloquante) et on relance vite.
+        if resultat == "Nul":
+            # On montre un message temporaire puis on relance automatiquement.
+            self._mettre_a_jour_labels("Match nul - nouvelle partie...")
+            self.root.after(500, self.nouvelle_partie)
+            return True
+
+        # Pour une victoire, on garde la popup d'information.
         messagebox.showinfo("Fin de partie", message)
         # On indique a l'appelant que la partie est finie.
         return True
@@ -327,8 +337,10 @@ class MorpionApp:
 
         # On applique le plateau retourne par l'IA.
         self.plateau = meilleur_coup
-        # On affiche la note du coup choisi.
-        self._mettre_a_jour_labels(f"IA {self.joueur_courant} joue (note {meilleure_note})")
+        # On affiche la note du coup choisi et le profil de difficulte actif.
+        self._mettre_a_jour_labels(
+            f"IA {self.joueur_courant} joue (note {meilleure_note}, {ia.nom_niveau(profondeur)})"
+        )
         # On termine le tour apres un petit delai.
         self.root.after(100, self._finir_tour)
 

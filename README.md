@@ -33,8 +33,9 @@ python3 interface.py
 
 ## Niveau de difficulte
 Le curseur va de 1 a 9.
-- Niveau faible: plus rapide, moins precis
-- Niveau eleve: plus fort, mais peut ralentir
+- Niveaux 1 a 3 (`Simple`): l'IA fait volontairement des erreurs et etourderies.
+- Niveaux 4 a 8 (`Intermediaire`): l'IA joue mieux avec de moins en moins d'erreurs.
+- Niveau 9 (`Impossible`): l'IA calcule jusqu'a la fin de partie et devient tres forte.
 
 ## Notes
 Tkinter est inclus avec Python standard sur macOS/Linux/Windows, donc aucune dependance externe n'est necessaire pour l'interface.
