@@ -13,4 +13,4 @@
 
 ## DONE
 - [ ] Structure Minimax + heuristique déjà en place (base).
-- [ ] Interfaces console et Tkinter présentes.
+- [ ] Interface Tkinter uniquement.

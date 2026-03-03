@@ -1,13 +1,11 @@
 # APP1 - Morpion IA (Minimax)
 
 Projet de morpion avec:
-- un mode console
 - une interface graphique Tkinter
 - une IA basee sur Minimax (avec elagage alpha-beta)
 
 ## Fichiers
-- `interface.py`: interface graphique (a lancer en priorite)
-- `principal.py`: version console
+- `interface.py`: interface graphique
 - `ia.py`: choix du meilleur coup
 - `regles.py`: victoire, nul, score heuristique
 - `outils.py`: fonctions utilitaires
@@ -17,12 +15,6 @@ Depuis le dossier du projet:
 
 ```bash
 python3 interface.py
-```
-
-Si tu veux la version console:
-
-```bash
-python3 principal.py
 ```
 
 ## Comment ca marche

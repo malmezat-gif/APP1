@@ -1,33 +1,32 @@
-"""Fonctions utilitaires partagees par le mode console et l'interface."""
+# Ce module regroupe des petites fonctions utiles dans tout le projet.
 
+# Cette constante represente une case vide du plateau.
 VIDE = " "
+# Cette constante represente le pion du joueur X.
 JOUEUR_X = "X"
+# Cette constante represente le pion du joueur O.
 JOUEUR_O = "O"
 
 
+# Cette fonction cree un nouveau plateau vide de 9 cases.
 def plateau_vide():
-    """Cree un plateau de morpion vide (9 cases)."""
+    # On retourne une liste de 9 cases vides.
     return [VIDE] * 9
 
 
+# Cette fonction copie un plateau existant.
 def copier_plateau(plateau):
-    """Retourne une copie du plateau pour eviter les effets de bord."""
+    # list(plateau) cree une nouvelle liste pour eviter de modifier l'original.
     return list(plateau)
 
 
+# Cette fonction donne le joueur qui doit jouer apres le joueur courant.
 def joueur_suivant(joueur):
-    """Alterne entre X et O."""
+    # Si le joueur courant est X, le suivant est O, sinon c'est X.
     return JOUEUR_O if joueur == JOUEUR_X else JOUEUR_X
 
 
+# Cette fonction renvoie les indices des cases encore disponibles.
 def coups_possibles(plateau):
-    """Liste les indices de cases encore libres."""
+    # On parcourt toutes les cases et on garde celles qui sont vides.
     return [index for index, valeur in enumerate(plateau) if valeur == VIDE]
-
-
-def plateau_vers_texte(plateau):
-    """Convertit un plateau en rendu texte 3x3 pour la console."""
-    lignes = []
-    for depart in (0, 3, 6):
-        lignes.append(f" {plateau[depart]} | {plateau[depart + 1]} | {plateau[depart + 2]} ")
-    return "\n" + "\n---+---+---\n".join(lignes) + "\n"

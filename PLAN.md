@@ -10,7 +10,7 @@
 - Génération d’arbre : expansion des coups possibles.
 - Évaluation : score terminal + heuristique intermédiaire.
 - Minimax : propagation des scores.
-- Interfaces : console + GUI (Tkinter).
+- Interface : GUI (Tkinter) uniquement.
 
 ## 3) Plan d’action (phases)
 ### A. Séance “aller”
@@ -40,4 +40,4 @@
 ## 5) Tests à prévoir
 - Victoire IA / victoire joueur / match nul.
 - Profondeur faible vs élevée.
-- Cas limites : plateau plein, coup illégal, entrée invalide.
+- Cas limites : plateau plein, coup illegal, clic invalide.
