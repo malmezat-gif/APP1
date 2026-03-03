@@ -1,62 +1,48 @@
-# APP1 — Morpion IA (Minimax)
+# APP1 - Morpion IA (Minimax)
 
-## Contexte
-Projet APP (Algorithmique avancée 2) : concevoir un jeu de morpion doté d’une IA de décision basée sur un arbre de jeu et l’algorithme Minimax.
+Projet de morpion avec:
+- un mode console
+- une interface graphique Tkinter
+- une IA basee sur Minimax (avec elagage alpha-beta)
 
-## Objectifs fonctionnels
-- Jouer au morpion contre l’ordinateur.
-- Afficher les scores d’évaluation d’une génération (min/max inclus).
-- Afficher une suite idéale de coups pour que l’IA gagne.
-- Afficher une suite idéale de coups pour que l’adversaire gagne.
-- Ajuster la difficulté via la profondeur de recherche (plus profond = plus lent).
-- Simuler joueur vs joueur et ordinateur vs ordinateur.
-- Bonus : généraliser à un jeu d’alignement de 4 (type puissance 4).
+## Fichiers
+- `interface.py`: interface graphique (a lancer en priorite)
+- `principal.py`: version console
+- `ia.py`: choix du meilleur coup
+- `regles.py`: victoire, nul, score heuristique
+- `outils.py`: fonctions utilitaires
 
-## Principes algorithmiques
-- Générer l’arbre des configurations possibles depuis un état courant.
-- Évaluer les feuilles (victoire/égalité/défaite + heuristique).
-- Propager les scores :
-  - Noeud MAX (tour de l’IA) : max des scores enfants.
-  - Noeud MIN (tour de l’adversaire) : min des scores enfants.
+## Lancer le jeu
+Depuis le dossier du projet:
 
-## Évaluation (exemple)
-- +1000 si l’IA gagne
-- 0 si égalité
-- -1000 si l’IA perd
-- Heuristique : bonus/malus selon lignes/colonnes/diagonales (2 pions alignés, etc.).
+```bash
+python3 interface.py
+```
 
-## Structure du dépôt
-- `principal.py` : version console
-- `interface.py` : interface Tkinter
-- `ia.py` : génération d’arbre + minimax
-- `regles.py` : règles du jeu + fonction d’évaluation
-- `outils.py` : utilitaires (racine, enfants, feuille)
+Si tu veux la version console:
 
-## Exécuter
-- Console : `python3 principal.py`
-- GUI : `python3 interface.py`
+```bash
+python3 principal.py
+```
 
-## Équipe & rôles
-Groupe APP :
-- Maxime Maury
-- Thibault Malmezat
-- Ilyass Boukkad
-- Titouan Vernier
+## Comment ca marche
+- Le plateau est une liste de 9 cases (`" "`, `"X"`, `"O"`).
+- L'IA teste tous les coups possibles jusqu'a une profondeur choisie.
+- Le score est calcule avec:
+  - `+1000` si l'IA gagne
+  - `-1000` si l'IA perd
+  - `0` si match nul
+  - sinon une heuristique simple sur les lignes ouvertes
 
-Rôles :
-- Porte‑parole : Thibault Malmezat
-- Barreur : Ilyass Boukkad
-- Activateur : Titouan Vernier
-- Gardien du temps : Maxime Maury
-- Faiseur de point : Thibault Malmezat
-- Circulateur de parole : Maxime Maury
-- Secrétaire : tout le monde
-- Scribe : Titouan Vernier
-- Intégrateur Git : Thibault Malmezat
-- Testeur : tout le monde
-- Architecte : tout le monde
+## Modes de jeu
+- `Joueur vs IA`
+- `Joueur vs Joueur`
+- `IA vs IA`
 
-## Livrables attendus
-- Code fonctionnel du morpion + IA Minimax.
-- Documentation (README, PLAN, KANBAN).
-- Démonstration des fonctionnalités demandées.
+## Niveau de difficulte
+Le curseur va de 1 a 9.
+- Niveau faible: plus rapide, moins precis
+- Niveau eleve: plus fort, mais peut ralentir
+
+## Notes
+Tkinter est inclus avec Python standard sur macOS/Linux/Windows, donc aucune dependance externe n'est necessaire pour l'interface.

@@ -1,42 +1,33 @@
-# Ce fichier contient des fonctions utilitaires tres simples.
-# Le but est d'eviter de re-ecrire les memes petites operations.
+"""Fonctions utilitaires partagees par le mode console et l'interface."""
+
+VIDE = " "
+JOUEUR_X = "X"
+JOUEUR_O = "O"
 
 
-def get_racine(arbre):
-    # La racine est la premiere case de la liste.
-    if arbre == []:
-        return None
-    return arbre[0]
-
-
-def get_sous_arbres(arbre):
-    # Les sous-arbres sont tous les elements apres la racine.
-    if arbre == []:
-        return []
-    return arbre[1:]
-
-
-def est_une_feuille(arbre):
-    # Un noeud feuille n'a pas d'enfants.
-    return len(arbre) == 1
-
-
-def joueur_suivant(joueur):
-    # Cette fonction alterne entre X et O.
-    if joueur == "X":
-        return "O"
-    return "X"
+def plateau_vide():
+    """Cree un plateau de morpion vide (9 cases)."""
+    return [VIDE] * 9
 
 
 def copier_plateau(plateau):
-    # On cree une copie pour ne pas modifier l'original.
+    """Retourne une copie du plateau pour eviter les effets de bord."""
     return list(plateau)
 
 
+def joueur_suivant(joueur):
+    """Alterne entre X et O."""
+    return JOUEUR_O if joueur == JOUEUR_X else JOUEUR_X
+
+
+def coups_possibles(plateau):
+    """Liste les indices de cases encore libres."""
+    return [index for index, valeur in enumerate(plateau) if valeur == VIDE]
+
+
 def plateau_vers_texte(plateau):
-    # Cette fonction transforme le plateau en texte lisible.
-    ligne1 = f" {plateau[0]} | {plateau[1]} | {plateau[2]} "
-    ligne2 = f" {plateau[3]} | {plateau[4]} | {plateau[5]} "
-    ligne3 = f" {plateau[6]} | {plateau[7]} | {plateau[8]} "
-    separateur = "---+---+---"
-    return "\n" + ligne1 + "\n" + separateur + "\n" + ligne2 + "\n" + separateur + "\n" + ligne3 + "\n"
+    """Convertit un plateau en rendu texte 3x3 pour la console."""
+    lignes = []
+    for depart in (0, 3, 6):
+        lignes.append(f" {plateau[depart]} | {plateau[depart + 1]} | {plateau[depart + 2]} ")
+    return "\n" + "\n---+---+---\n".join(lignes) + "\n"
