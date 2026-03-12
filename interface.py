@@ -1,405 +1,860 @@
-# Ce fichier contient l'interface graphique du morpion.
-# Le jeu est 100% pilotable a la souris depuis cette fenetre.
+# Interface graphique principale du projet.
 
-# On importe Tkinter (bibliotheque graphique standard de Python).
+# Tkinter fournit les variables d'interface et les boites de dialogue.
 import tkinter as tk
-# On importe un popup (messagebox) et les widgets modernes (ttk).
-from tkinter import messagebox, ttk
+from tkinter import messagebox
 
-# On importe le module IA pour calculer les coups automatiques.
+# CustomTkinter modernise l'interface sans changer la logique du jeu.
+import customtkinter as ctk
+
+# Ces modules contiennent la logique metier du morpion.
 import ia
-# On importe les regles du jeu (victoire, nul, etc.).
 import regles
-# On importe les utilitaires (plateau vide, joueur suivant, ...).
 import outils
 
 
-# Cette classe represente toute l'application graphique.
+# On conserve un theme moderne et coherent pour toute l'application.
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
+
+
+# Palette commune de l'interface.
+WINDOW_BG = "#09101D"
+CARD_BG = "#101826"
+CARD_ALT = "#172235"
+BORDER = "#243247"
+TEXT_MAIN = "#F8FAFC"
+TEXT_MUTED = "#94A3B8"
+ACCENT = "#14B8A6"
+ACCENT_HOVER = "#0F766E"
+EMPTY_BG = "#1E293B"
+EMPTY_HOVER = "#334155"
+X_COLOR = "#FB7185"
+O_COLOR = "#38BDF8"
+ANALYSIS_BG = "#0B1220"
+
+
 class MorpionApp:
-    # Cette docstring explique le role global de la classe.
-    """Fenetre principale du jeu."""
+    """Fenetre principale du morpion."""
 
-    # Cette constante contient les modes affiches dans la liste deroulante.
+    # Les modes de jeu existants sont conserves.
     MODES = ("Joueur vs IA", "Joueur vs Joueur", "IA vs IA")
+    # Le morpion permet d'aller jusqu'a 9 coups d'avance.
+    GENERATIONS = tuple(str(numero) for numero in range(1, 10))
 
-    # Le constructeur initialise la fenetre, l'etat du jeu et l'interface.
     def __init__(self, root):
-        # On garde une reference vers la fenetre principale Tkinter.
+        # On memorise la fenetre racine.
         self.root = root
-        # On definit le titre de la fenetre.
+        # Titre visible dans la barre de fenetre.
         self.root.title("Morpion")
-        # On empeche le redimensionnement pour garder un layout simple.
-        self.root.resizable(False, False)
+        # Taille par defaut un peu plus large pour accueillir l'analyse.
+        self.root.geometry("1280x860")
+        # Taille minimale pour garder une interface lisible.
+        self.root.minsize(1100, 760)
+        # Couleur de fond generale.
+        self.root.configure(fg_color=WINDOW_BG)
+        # La fenetre principale utilise toute la place disponible.
+        self.root.grid_columnconfigure(0, weight=1)
+        self.root.grid_rowconfigure(0, weight=1)
 
-        # On cree un plateau vide (9 cases).
+        # Etat courant de la partie de morpion.
         self.plateau = outils.plateau_vide()
-        # X commence toujours au debut d'une partie.
-        self.joueur_courant = "X"
-        # Ce drapeau passe a True quand la partie est terminee.
+        self.joueur_courant = outils.JOUEUR_X
         self.partie_terminee = False
-        # Ce drapeau passe a True pendant le calcul du coup IA.
         self.ia_en_cours = False
-        # Ce dictionnaire garde les scores cumules des manches.
         self.scores = {"X": 0, "O": 0, "Nul": 0}
 
-        # Variable Tkinter qui stocke le texte du mode courant.
+        # Variables d'interface.
         self.mode_var = tk.StringVar(value=self.MODES[0])
-        # Variable Tkinter qui stocke la difficulte (profondeur IA).
         self.niveau_var = tk.IntVar(value=4)
-        # Variable Tkinter pour le texte du statut en haut.
+        self.generation_var = tk.StringVar(value=self.GENERATIONS[1])
         self.statut_var = tk.StringVar(value="")
-        # Variable Tkinter pour afficher le niveau courant.
         self.niveau_label_var = tk.StringVar(value="")
-        # Variable Tkinter pour afficher les scores.
         self.score_var = tk.StringVar(value="")
+        self.analyse_resume_var = tk.StringVar(value="")
 
-        # Liste qui contiendra les 9 boutons de la grille.
+        # Les references graphiques utiles sont initialisees ici.
         self.boutons = []
-        # On construit tous les widgets de la fenetre.
+        self.fenetre_puissance4 = None
+
+        # Construction de toute la fenetre.
         self._construire_interface()
-        # On lance une partie propre au demarrage.
+        # Demarrage sur une partie propre.
         self.nouvelle_partie()
 
-    # Cette methode construit visuellement la fenetre.
     def _construire_interface(self):
-        # On cree un cadre principal avec un peu de marge interne.
-        conteneur = ttk.Frame(self.root, padding=12)
-        # On place ce cadre dans la fenetre avec grid.
-        conteneur.grid(row=0, column=0, sticky="nsew")
+        # Le conteneur principal structure la page.
+        self.conteneur = ctk.CTkFrame(self.root, fg_color="transparent")
+        self.conteneur.grid(row=0, column=0, sticky="nsew", padx=28, pady=24)
+        self.conteneur.grid_columnconfigure(0, weight=3)
+        self.conteneur.grid_columnconfigure(1, weight=2)
+        self.conteneur.grid_rowconfigure(1, weight=1)
 
-        # Etiquette "Mode:" a gauche.
-        ttk.Label(conteneur, text="Mode:").grid(row=0, column=0, sticky="w")
-        # Combobox pour choisir le mode de jeu.
-        self.combo_mode = ttk.Combobox(
-            # Parent de la combobox.
-            conteneur,
-            # Variable liee au texte selectionne.
-            textvariable=self.mode_var,
-            # Liste des options possibles.
-            values=self.MODES,
-            # Largeur visuelle en caracteres.
-            width=18,
-            # readonly interdit de taper du texte libre.
-            state="readonly",
+        # Carte d'entete avec le titre et les controles principaux.
+        self.hero = ctk.CTkFrame(
+            self.conteneur,
+            fg_color=CARD_BG,
+            corner_radius=28,
+            border_width=1,
+            border_color=BORDER,
         )
-        # Placement de la combobox.
-        self.combo_mode.grid(row=0, column=1, sticky="ew", padx=(8, 8))
-        # Quand l'utilisateur change le mode, on declenche une nouvelle partie.
-        self.combo_mode.bind("<<ComboboxSelected>>", self._changement_mode)
+        self.hero.grid(row=0, column=0, columnspan=2, sticky="ew")
+        self.hero.grid_columnconfigure(0, weight=1)
 
-        # Etiquette "Difficulte:" a cote du slider.
-        ttk.Label(conteneur, text="Difficulte:").grid(row=0, column=2, sticky="w")
-        # Slider horizontal pour regler la profondeur de l'IA.
-        self.scale_niveau = tk.Scale(
-            # Parent du slider.
-            conteneur,
-            # Valeur minimale.
+        # Titre du jeu.
+        self.titre = ctk.CTkLabel(
+            self.hero,
+            text="Morpion",
+            font=ctk.CTkFont(family="Avenir Next", size=34, weight="bold"),
+            text_color=TEXT_MAIN,
+        )
+        self.titre.grid(row=0, column=0, sticky="ew", padx=24, pady=(22, 4))
+
+        # Sous-titre explicatif.
+        self.sous_titre = ctk.CTkLabel(
+            self.hero,
+            text="Jeu principal, analyse Minimax et acces direct au module Puissance 4",
+            font=ctk.CTkFont(family="Avenir Next", size=14),
+            text_color=TEXT_MUTED,
+        )
+        self.sous_titre.grid(row=1, column=0, sticky="ew", padx=24)
+
+        # Zone des controles du haut.
+        self.controles = ctk.CTkFrame(self.hero, fg_color="transparent")
+        self.controles.grid(row=2, column=0, sticky="ew", padx=24, pady=(20, 16))
+        self.controles.grid_columnconfigure((0, 1, 2), weight=1)
+
+        # Carte du mode de jeu.
+        self.carte_mode = ctk.CTkFrame(
+            self.controles,
+            fg_color=CARD_ALT,
+            corner_radius=20,
+            border_width=1,
+            border_color=BORDER,
+        )
+        self.carte_mode.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        self.carte_mode.grid_columnconfigure(0, weight=1)
+
+        self.label_mode = ctk.CTkLabel(
+            self.carte_mode,
+            text="Mode de jeu",
+            anchor="w",
+            font=ctk.CTkFont(family="Avenir Next", size=13, weight="bold"),
+            text_color=TEXT_MUTED,
+        )
+        self.label_mode.grid(row=0, column=0, sticky="ew", padx=16, pady=(14, 6))
+
+        self.combo_mode = ctk.CTkOptionMenu(
+            self.carte_mode,
+            variable=self.mode_var,
+            values=list(self.MODES),
+            command=self._changement_mode,
+            fg_color="#213149",
+            button_color=ACCENT,
+            button_hover_color=ACCENT_HOVER,
+            dropdown_fg_color="#152033",
+            dropdown_hover_color="#22314A",
+            text_color=TEXT_MAIN,
+            font=ctk.CTkFont(family="Avenir Next", size=14),
+            dropdown_font=ctk.CTkFont(family="Avenir Next", size=13),
+            corner_radius=14,
+            dynamic_resizing=False,
+            height=40,
+        )
+        self.combo_mode.grid(row=1, column=0, sticky="ew", padx=16, pady=(0, 16))
+
+        # Carte du niveau d'IA.
+        self.carte_niveau = ctk.CTkFrame(
+            self.controles,
+            fg_color=CARD_ALT,
+            corner_radius=20,
+            border_width=1,
+            border_color=BORDER,
+        )
+        self.carte_niveau.grid(row=0, column=1, sticky="ew", padx=8)
+        self.carte_niveau.grid_columnconfigure(0, weight=1)
+
+        self.label_niveau_titre = ctk.CTkLabel(
+            self.carte_niveau,
+            text="Difficulte",
+            anchor="w",
+            font=ctk.CTkFont(family="Avenir Next", size=13, weight="bold"),
+            text_color=TEXT_MUTED,
+        )
+        self.label_niveau_titre.grid(row=0, column=0, sticky="ew", padx=16, pady=(14, 6))
+
+        self.scale_niveau = ctk.CTkSlider(
+            self.carte_niveau,
             from_=1,
-            # Valeur maximale.
             to=9,
-            # Orientation horizontale.
-            orient="horizontal",
-            # Variable liee a la valeur du slider.
+            number_of_steps=8,
             variable=self.niveau_var,
-            # On cache la valeur numerique standard du widget.
-            showvalue=False,
-            # Longueur visuelle du slider.
-            length=120,
-            # Callback appele a chaque changement.
             command=self._changement_niveau,
+            progress_color=ACCENT,
+            button_color=ACCENT,
+            button_hover_color=ACCENT_HOVER,
+            fg_color="#273449",
+            height=18,
         )
-        # Placement du slider.
-        self.scale_niveau.grid(row=0, column=3, sticky="ew")
+        self.scale_niveau.grid(row=1, column=0, sticky="ew", padx=16, pady=(0, 16))
 
-        # Bouton pour relancer une nouvelle manche.
-        bouton_nouvelle = ttk.Button(conteneur, text="Nouvelle partie", command=self.nouvelle_partie)
-        # Placement du bouton.
-        bouton_nouvelle.grid(row=0, column=4, padx=(10, 0))
-
-        # Label du statut (tour courant / message de fin).
-        ttk.Label(conteneur, textvariable=self.statut_var, font=("Helvetica", 12, "bold")).grid(
-            # Ligne du label.
-            row=1,
-            # Colonne de depart.
-            column=0,
-            # Le label prend la largeur des 5 colonnes.
-            columnspan=5,
-            # Petite marge verticale.
-            pady=(10, 0),
-            # Etirement horizontal.
-            sticky="ew",
+        # Carte des actions principales.
+        self.carte_action = ctk.CTkFrame(
+            self.controles,
+            fg_color=CARD_ALT,
+            corner_radius=20,
+            border_width=1,
+            border_color=BORDER,
         )
-        # Label d'information du niveau IA courant.
-        ttk.Label(conteneur, textvariable=self.niveau_label_var).grid(row=2, column=0, columnspan=5, sticky="ew")
-        # Label des scores cumules.
-        ttk.Label(conteneur, textvariable=self.score_var).grid(row=3, column=0, columnspan=5, sticky="ew")
+        self.carte_action.grid(row=0, column=2, sticky="ew", padx=(8, 0))
+        self.carte_action.grid_columnconfigure(0, weight=1)
 
-        # Cadre qui contient la grille 3x3 des boutons du plateau.
-        grille = ttk.Frame(conteneur, padding=(0, 10, 0, 0))
-        # Placement du cadre grille.
-        grille.grid(row=4, column=0, columnspan=5)
+        self.label_action = ctk.CTkLabel(
+            self.carte_action,
+            text="Actions",
+            anchor="w",
+            font=ctk.CTkFont(family="Avenir Next", size=13, weight="bold"),
+            text_color=TEXT_MUTED,
+        )
+        self.label_action.grid(row=0, column=0, sticky="ew", padx=16, pady=(14, 6))
 
-        # Boucle pour creer exactement 9 boutons (3 lignes x 3 colonnes).
+        self.bouton_nouvelle = ctk.CTkButton(
+            self.carte_action,
+            text="Nouvelle partie",
+            command=self.nouvelle_partie,
+            fg_color=ACCENT,
+            hover_color=ACCENT_HOVER,
+            text_color="#06131E",
+            font=ctk.CTkFont(family="Avenir Next", size=14, weight="bold"),
+            corner_radius=14,
+            height=40,
+        )
+        self.bouton_nouvelle.grid(row=1, column=0, sticky="ew", padx=16, pady=(0, 10))
+
+        self.bouton_puissance4 = ctk.CTkButton(
+            self.carte_action,
+            text="Ouvrir Puissance 4",
+            command=self._ouvrir_puissance4,
+            fg_color="#22314A",
+            hover_color="#31425E",
+            text_color=TEXT_MAIN,
+            font=ctk.CTkFont(family="Avenir Next", size=14, weight="bold"),
+            corner_radius=14,
+            height=40,
+        )
+        self.bouton_puissance4.grid(row=2, column=0, sticky="ew", padx=16, pady=(0, 16))
+
+        # Informations de statut en dessous des controles.
+        self.label_tour = ctk.CTkLabel(
+            self.hero,
+            textvariable=self.statut_var,
+            wraplength=960,
+            justify="center",
+            font=ctk.CTkFont(family="Avenir Next", size=24, weight="bold"),
+            text_color=TEXT_MAIN,
+        )
+        self.label_tour.grid(row=3, column=0, sticky="ew", padx=24, pady=(0, 8))
+
+        self.label_niveau = ctk.CTkLabel(
+            self.hero,
+            textvariable=self.niveau_label_var,
+            font=ctk.CTkFont(family="Avenir Next", size=14),
+            text_color=TEXT_MUTED,
+        )
+        self.label_niveau.grid(row=4, column=0, sticky="ew", padx=24)
+
+        self.label_score = ctk.CTkLabel(
+            self.hero,
+            textvariable=self.score_var,
+            font=ctk.CTkFont(family="Avenir Next", size=15),
+            text_color=TEXT_MAIN,
+        )
+        self.label_score.grid(row=5, column=0, sticky="ew", padx=24, pady=(6, 22))
+
+        # Carte du plateau de morpion.
+        self.carte_plateau = ctk.CTkFrame(
+            self.conteneur,
+            fg_color=CARD_BG,
+            corner_radius=28,
+            border_width=1,
+            border_color=BORDER,
+        )
+        self.carte_plateau.grid(row=1, column=0, sticky="nsew", pady=(18, 0), padx=(0, 10))
+        self.carte_plateau.grid_columnconfigure(0, weight=1)
+        self.carte_plateau.grid_rowconfigure(1, weight=1)
+
+        self.titre_plateau = ctk.CTkLabel(
+            self.carte_plateau,
+            text="Plateau de jeu",
+            anchor="w",
+            font=ctk.CTkFont(family="Avenir Next", size=18, weight="bold"),
+            text_color=TEXT_MAIN,
+        )
+        self.titre_plateau.grid(row=0, column=0, sticky="ew", padx=22, pady=(20, 0))
+
+        self.grille = ctk.CTkFrame(self.carte_plateau, fg_color="transparent")
+        self.grille.grid(row=1, column=0, padx=22, pady=22, sticky="nsew")
+        self.grille.grid_columnconfigure((0, 1, 2), weight=1)
+        self.grille.grid_rowconfigure((0, 1, 2), weight=1)
+
         for index in range(9):
-            # Creation d'un bouton de case.
-            bouton = tk.Button(
-                # Parent du bouton.
-                grille,
-                # Texte initial vide.
+            bouton = ctk.CTkButton(
+                self.grille,
                 text="",
-                # Largeur visuelle.
-                width=4,
-                # Hauteur visuelle.
-                height=2,
-                # Police du pion affiche.
-                font=("Helvetica", 28, "bold"),
-                # Callback clic: on passe l'index de la case.
                 command=lambda i=index: self.clic_case(i),
+                width=170,
+                height=150,
+                corner_radius=24,
+                fg_color=EMPTY_BG,
+                hover_color=EMPTY_HOVER,
+                border_width=1,
+                border_color=BORDER,
+                text_color=TEXT_MAIN,
+                font=ctk.CTkFont(family="Avenir Next", size=52, weight="bold"),
             )
-            # Placement du bouton selon son index (ligne/colonne).
-            bouton.grid(row=index // 3, column=index % 3, padx=4, pady=4)
-            # On memorise le bouton pour le mettre a jour plus tard.
+            bouton.grid(row=index // 3, column=index % 3, padx=10, pady=10, sticky="nsew")
             self.boutons.append(bouton)
 
-    # Cette methode convertit le texte de la combobox en code interne.
+        # Carte laterale d'analyse du morpion.
+        self.carte_analyse = ctk.CTkFrame(
+            self.conteneur,
+            fg_color=CARD_BG,
+            corner_radius=28,
+            border_width=1,
+            border_color=BORDER,
+        )
+        self.carte_analyse.grid(row=1, column=1, sticky="nsew", pady=(18, 0), padx=(10, 0))
+        self.carte_analyse.grid_columnconfigure(0, weight=1)
+        self.carte_analyse.grid_rowconfigure(4, weight=1)
+
+        self.titre_analyse = ctk.CTkLabel(
+            self.carte_analyse,
+            text="Outils d'analyse",
+            anchor="w",
+            font=ctk.CTkFont(family="Avenir Next", size=18, weight="bold"),
+            text_color=TEXT_MAIN,
+        )
+        self.titre_analyse.grid(row=0, column=0, sticky="ew", padx=22, pady=(20, 4))
+
+        self.resume_analyse = ctk.CTkLabel(
+            self.carte_analyse,
+            textvariable=self.analyse_resume_var,
+            wraplength=420,
+            justify="left",
+            anchor="w",
+            font=ctk.CTkFont(family="Avenir Next", size=13),
+            text_color=TEXT_MUTED,
+        )
+        self.resume_analyse.grid(row=1, column=0, sticky="ew", padx=22)
+
+        # Bloc des controles d'analyse.
+        self.outils_analyse = ctk.CTkFrame(
+            self.carte_analyse,
+            fg_color=CARD_ALT,
+            corner_radius=20,
+            border_width=1,
+            border_color=BORDER,
+        )
+        self.outils_analyse.grid(row=2, column=0, sticky="ew", padx=22, pady=(16, 14))
+        self.outils_analyse.grid_columnconfigure((0, 1), weight=1)
+
+        self.label_generation = ctk.CTkLabel(
+            self.outils_analyse,
+            text="Generation a analyser",
+            anchor="w",
+            font=ctk.CTkFont(family="Avenir Next", size=13, weight="bold"),
+            text_color=TEXT_MUTED,
+        )
+        self.label_generation.grid(row=0, column=0, sticky="ew", padx=16, pady=(14, 6))
+
+        self.combo_generation = ctk.CTkOptionMenu(
+            self.outils_analyse,
+            variable=self.generation_var,
+            values=list(self.GENERATIONS),
+            command=self._changement_generation,
+            fg_color="#213149",
+            button_color=ACCENT,
+            button_hover_color=ACCENT_HOVER,
+            dropdown_fg_color="#152033",
+            dropdown_hover_color="#22314A",
+            text_color=TEXT_MAIN,
+            font=ctk.CTkFont(family="Avenir Next", size=13),
+            dropdown_font=ctk.CTkFont(family="Avenir Next", size=13),
+            corner_radius=14,
+            dynamic_resizing=False,
+            height=38,
+        )
+        self.combo_generation.grid(row=1, column=0, sticky="ew", padx=16, pady=(0, 14))
+
+        self.bouton_generation = ctk.CTkButton(
+            self.outils_analyse,
+            text="Afficher les scores",
+            command=self._afficher_scores_generation,
+            fg_color=ACCENT,
+            hover_color=ACCENT_HOVER,
+            text_color="#06131E",
+            font=ctk.CTkFont(family="Avenir Next", size=13, weight="bold"),
+            corner_radius=14,
+            height=38,
+        )
+        self.bouton_generation.grid(row=1, column=1, sticky="ew", padx=(0, 16), pady=(0, 14))
+
+        self.bouton_suite_ia = ctk.CTkButton(
+            self.outils_analyse,
+            text="Suite ideale principale",
+            command=self._afficher_suite_principale,
+            fg_color="#22314A",
+            hover_color="#31425E",
+            text_color=TEXT_MAIN,
+            font=ctk.CTkFont(family="Avenir Next", size=13, weight="bold"),
+            corner_radius=14,
+            height=38,
+        )
+        self.bouton_suite_ia.grid(row=2, column=0, sticky="ew", padx=16, pady=(0, 10))
+
+        self.bouton_suite_adversaire = ctk.CTkButton(
+            self.outils_analyse,
+            text="Suite ideale secondaire",
+            command=self._afficher_suite_secondaire,
+            fg_color="#22314A",
+            hover_color="#31425E",
+            text_color=TEXT_MAIN,
+            font=ctk.CTkFont(family="Avenir Next", size=13, weight="bold"),
+            corner_radius=14,
+            height=38,
+        )
+        self.bouton_suite_adversaire.grid(row=2, column=1, sticky="ew", padx=(0, 16), pady=(0, 10))
+
+        self.texte_aide_analyse = ctk.CTkLabel(
+            self.outils_analyse,
+            text="La generation explore toutes les positions atteintes apres 1 a 9 coups.",
+            wraplength=390,
+            justify="left",
+            anchor="w",
+            font=ctk.CTkFont(family="Avenir Next", size=12),
+            text_color=TEXT_MUTED,
+        )
+        self.texte_aide_analyse.grid(row=3, column=0, columnspan=2, sticky="ew", padx=16, pady=(0, 14))
+
+        # Zone scrollable qui affiche les resultats de l'analyse.
+        self.zone_analyse = ctk.CTkTextbox(
+            self.carte_analyse,
+            fg_color=ANALYSIS_BG,
+            corner_radius=18,
+            border_width=1,
+            border_color=BORDER,
+            text_color=TEXT_MAIN,
+            font=ctk.CTkFont(family="Menlo", size=12),
+            wrap="word",
+        )
+        self.zone_analyse.grid(row=4, column=0, sticky="nsew", padx=22, pady=(0, 22))
+
+        # Texte d'aide sous les cartes.
+        self.aide = ctk.CTkLabel(
+            self.conteneur,
+            text="Joue sur le plateau, puis utilise le panneau d'analyse pour observer les scores d'une generation et les suites gagnantes depuis la position courante.",
+            font=ctk.CTkFont(family="Avenir Next", size=13),
+            text_color=TEXT_MUTED,
+        )
+        self.aide.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(16, 0))
+
     def _mode_code(self):
-        # Si le mode choisi est Joueur vs Joueur.
+        # On convertit le libelle lisible en code interne.
         if self.mode_var.get() == "Joueur vs Joueur":
-            # Code interne du mode humain contre humain.
             return "jvj"
-        # Si le mode choisi est IA vs IA.
         if self.mode_var.get() == "IA vs IA":
-            # Code interne du mode automatique.
             return "iavia"
-        # Par defaut, on est en Joueur vs IA.
         return "jvia"
 
-    # Cette methode indique pour X et O s'ils sont humains ou IA.
     def _types_joueurs(self):
-        # On lit le code du mode actuel.
+        # On determine si chaque joueur est humain ou IA selon le mode choisi.
         mode = self._mode_code()
-        # Cas joueur contre joueur.
         if mode == "jvj":
-            # Les deux joueurs sont humains.
             return {"X": "humain", "O": "humain"}
-        # Cas IA contre IA.
         if mode == "iavia":
-            # Les deux joueurs sont des IA.
             return {"X": "ia", "O": "ia"}
-        # Cas Joueur vs IA: X humain, O IA.
         return {"X": "humain", "O": "ia"}
 
-    # Cette methode dit si un clic humain est autorise maintenant.
     def _tour_humain_possible(self):
-        # Si la partie est finie, aucun clic n'est autorise.
+        # Un clic humain n'est possible que si la partie continue et qu'aucune IA n'est en cours.
         if self.partie_terminee or self.ia_en_cours:
-            # False bloque les clics.
             return False
-        # Sinon, clic autorise seulement si le joueur courant est humain.
         return self._types_joueurs()[self.joueur_courant] == "humain"
 
-    # Cette methode met a jour tous les textes d'information de l'interface.
+    def _libelles_suites(self):
+        # Les libelles s'adaptent au mode pour rester pedagogiques.
+        mode = self._mode_code()
+        if mode == "jvia":
+            return {
+                "principal": ("ordinateur", outils.JOUEUR_O),
+                "secondaire": ("adversaire", outils.JOUEUR_X),
+            }
+        if mode == "iavia":
+            return {
+                "principal": ("IA X", outils.JOUEUR_X),
+                "secondaire": ("IA O", outils.JOUEUR_O),
+            }
+        return {
+            "principal": ("joueur X", outils.JOUEUR_X),
+            "secondaire": ("joueur O", outils.JOUEUR_O),
+        }
+
+    def _reference_scores(self):
+        # En Joueur vs IA, l'analyse est naturellement faite du point de vue de l'ordinateur.
+        if self._mode_code() == "jvia":
+            return outils.JOUEUR_O, "ordinateur (O)"
+        # Dans les autres modes, on regarde la position du point de vue du joueur courant.
+        return self.joueur_courant, f"joueur courant ({self.joueur_courant})"
+
     def _mettre_a_jour_labels(self, message=None):
-        # Si un message explicite est fourni, on l'affiche directement.
+        # Le statut principal reste identique a la version precedente.
         if message is not None:
             self.statut_var.set(message)
-        # Sinon, si la partie est finie, on l'indique.
         elif self.partie_terminee:
             self.statut_var.set("Partie terminee")
-        # Sinon on affiche le tour de jeu courant.
         else:
-            # On recupere si le joueur courant est humain ou IA.
             role = self._types_joueurs()[self.joueur_courant]
-            # On met a jour le texte du statut.
             self.statut_var.set(f"Tour de {self.joueur_courant} ({role})")
 
-        # On affiche la valeur du niveau avec son profil lisible.
-        niveau = self.niveau_var.get()
+        # Le niveau reste affiche avec son nom pedagogique.
+        niveau = int(round(float(self.niveau_var.get())))
         nom_niveau = ia.nom_niveau(niveau)
         self.niveau_label_var.set(f"Niveau IA: {niveau} ({nom_niveau})")
-        # On affiche les scores cumules X, O et Nuls.
         self.score_var.set(
-            # Texte formate des scores.
             f"Score X: {self.scores['X']}   Score O: {self.scores['O']}   Nuls: {self.scores['Nul']}"
         )
 
-    # Cette methode met a jour visuellement les 9 boutons de la grille.
+        # Le panneau d'analyse s'adapte au mode courant.
+        reference, libelle_reference = self._reference_scores()
+        self.analyse_resume_var.set(
+            f"Les scores de generation sont evalues du point de vue de {libelle_reference}. "
+            f"La position actuelle commence avec le joueur {self.joueur_courant}."
+        )
+
+        libelles = self._libelles_suites()
+        self.bouton_suite_ia.configure(
+            text=f"Suite ideale {libelles['principal'][0]} ({libelles['principal'][1]})"
+        )
+        self.bouton_suite_adversaire.configure(
+            text=f"Suite ideale {libelles['secondaire'][0]} ({libelles['secondaire'][1]})"
+        )
+
     def _rafraichir_plateau(self):
-        # On parcourt chaque bouton avec son index.
+        # Chaque bouton du plateau est recolorie selon son contenu.
         for index, bouton in enumerate(self.boutons):
-            # On lit le contenu de la case correspondante du plateau.
             pion = self.plateau[index]
-            # Si la case est vide.
             if pion == outils.VIDE:
-                # On efface le texte et on active/desactive selon le tour humain.
-                bouton.config(text="", state="normal" if self._tour_humain_possible() else "disabled")
-                # On passe a la case suivante.
+                actif = self._tour_humain_possible()
+                bouton.configure(
+                    text="",
+                    state="normal" if actif else "disabled",
+                    fg_color=EMPTY_BG,
+                    hover_color=EMPTY_HOVER,
+                    border_width=1,
+                    border_color=BORDER,
+                    text_color=TEXT_MAIN,
+                    text_color_disabled=TEXT_MUTED,
+                    hover=actif,
+                )
                 continue
 
-            # Si la case contient un pion, on choisit sa couleur.
-            couleur = "#b91c1c" if pion == "X" else "#0e7490"
-            # On affiche le pion et on bloque le bouton.
-            bouton.config(text=pion, fg=couleur, state="disabled")
+            couleur = X_COLOR if pion == outils.JOUEUR_X else O_COLOR
+            contour = "#BE123C" if pion == outils.JOUEUR_X else "#0369A1"
+            bouton.configure(
+                text=pion,
+                state="disabled",
+                fg_color=CARD_ALT,
+                hover=False,
+                border_width=2,
+                border_color=contour,
+                text_color=couleur,
+                text_color_disabled=couleur,
+            )
 
-    # Cette methode verifie si la partie vient de se terminer.
+    def _case_vers_coordonnees(self, case):
+        # Les coordonnees humaines sont numerotees a partir de 1.
+        ligne = (case // 3) + 1
+        colonne = (case % 3) + 1
+        return f"L{ligne} C{colonne}"
+
+    def _chemin_vers_texte(self, chemin):
+        # On transforme une liste de coups en phrase lisible.
+        if not chemin:
+            return "Position courante"
+        return " -> ".join(
+            f"{joueur} {self._case_vers_coordonnees(case)}" for joueur, case in chemin
+        )
+
+    def _ecrire_analyse(self, lignes):
+        # On remplace le contenu de la zone d'analyse par le nouveau resultat.
+        self.zone_analyse.delete("1.0", "end")
+        self.zone_analyse.insert("1.0", "\n".join(lignes))
+
+    def _initialiser_zone_analyse(self):
+        # Ce message apparait tant qu'aucune analyse n'a encore ete lancee.
+        _, libelle_reference = self._reference_scores()
+        libelles = self._libelles_suites()
+        self._ecrire_analyse(
+            [
+                "Analyse de la position courante",
+                "",
+                f"- Tour actuel : {self.joueur_courant}",
+                f"- Evaluation de generation : point de vue de {libelle_reference}",
+                f"- Suite 1 : {libelles['principal'][0]} ({libelles['principal'][1]})",
+                f"- Suite 2 : {libelles['secondaire'][0]} ({libelles['secondaire'][1]})",
+                "",
+                "Utilise les boutons ci-dessus pour lancer l'analyse.",
+            ]
+        )
+
+    def _afficher_scores_generation(self):
+        # On lit la generation voulue dans le controle de l'interface.
+        profondeur = int(self.generation_var.get())
+        # On choisit le point de vue d'evaluation adapte au mode.
+        reference, libelle_reference = self._reference_scores()
+        # On delegue le calcul au module IA.
+        analyse = ia.analyser_generation(
+            self.plateau,
+            self.joueur_courant,
+            profondeur,
+            reference,
+        )
+
+        # On construit un texte clair pour l'utilisateur.
+        lignes = [
+            "Scores d'evaluation d'une generation",
+            "",
+            f"Generation demandee : {analyse['profondeur']}",
+            f"Joueur qui doit jouer : {self.joueur_courant}",
+            f"Point de vue des scores : {libelle_reference}",
+            f"Nombre de positions atteintes : {len(analyse['positions'])}",
+            f"Minimum : {analyse['minimum']}",
+            f"Maximum : {analyse['maximum']}",
+            "",
+            "Liste complete des scores de cette generation :",
+        ]
+
+        # On affiche tous les scores, regroupes par lignes pour rester lisibles.
+        notes = analyse["notes"]
+        for debut in range(0, len(notes), 24):
+            bloc = notes[debut : debut + 24]
+            lignes.append(" ".join(f"{note:>5}" for note in bloc))
+
+        # Si la generation est raisonnable, on affiche aussi le detail complet des chemins.
+        if len(analyse["positions"]) <= 120:
+            lignes.append("")
+            lignes.append("Details des positions atteintes :")
+            for numero, position in enumerate(analyse["positions"], start=1):
+                resultat = position["resultat"] if position["resultat"] is not None else "En cours"
+                lignes.append(
+                    f"{numero:>2}. score {position['score']:>4} | "
+                    f"{self._chemin_vers_texte(position['chemin'])} | {resultat}"
+                )
+        else:
+            lignes.append("")
+            lignes.append(
+                "Details des chemins : apercu des 40 premiers pour garder une interface lisible."
+            )
+            for numero, position in enumerate(analyse["positions"][:40], start=1):
+                resultat = position["resultat"] if position["resultat"] is not None else "En cours"
+                lignes.append(
+                    f"{numero:>2}. score {position['score']:>4} | "
+                    f"{self._chemin_vers_texte(position['chemin'])} | {resultat}"
+                )
+
+        self._ecrire_analyse(lignes)
+
+    def _afficher_suite_ideale(self, joueur_cible, libelle_cible):
+        # On demande a l'IA si une victoire forcee existe pour ce joueur.
+        resultat = ia.trouver_suite_gagnante(self.plateau, self.joueur_courant, joueur_cible)
+
+        # Si la position de depart est deja terminee, on l'indique simplement.
+        if resultat["resultat"] == joueur_cible and not resultat["suite"]:
+            self._ecrire_analyse(
+                [
+                    f"Suite ideale pour {libelle_cible}",
+                    "",
+                    f"La position courante est deja gagnante pour {joueur_cible}.",
+                ]
+            )
+            return
+
+        # Si aucune suite gagnante n'existe, on renvoie un message clair.
+        if not resultat["trouvee"]:
+            self._ecrire_analyse(
+                [
+                    f"Suite ideale pour {libelle_cible}",
+                    "",
+                    f"Aucune suite gagnante trouvee pour {libelle_cible} depuis cette position.",
+                    f"Score optimal obtenu par Minimax : {resultat['score']}",
+                ]
+            )
+            return
+
+        # Sinon on detaille la suite optimale trouvee.
+        lignes = [
+            f"Suite ideale pour {libelle_cible}",
+            "",
+            f"Joueur qui doit jouer maintenant : {self.joueur_courant}",
+            "Sequence optimale :",
+        ]
+
+        for numero, (joueur, case) in enumerate(resultat["suite"], start=1):
+            lignes.append(f"{numero}. {joueur} joue en {self._case_vers_coordonnees(case)}")
+
+        lignes.append("")
+        lignes.append(f"Conclusion : {joueur_cible} peut forcer la victoire depuis cette position.")
+        self._ecrire_analyse(lignes)
+
+    def _afficher_suite_principale(self):
+        # Ce bouton affiche la premiere suite demandee dans l'interface.
+        libelles = self._libelles_suites()
+        libelle, joueur = libelles["principal"]
+        self._afficher_suite_ideale(joueur, libelle)
+
+    def _afficher_suite_secondaire(self):
+        # Ce bouton affiche la seconde suite demandee dans l'interface.
+        libelles = self._libelles_suites()
+        libelle, joueur = libelles["secondaire"]
+        self._afficher_suite_ideale(joueur, libelle)
+
     def _verifier_fin(self):
-        # On demande aux regles l'etat de la partie.
+        # On controle si la partie vient de se terminer.
         resultat = regles.verifier_gagnant(self.plateau)
-        # Si pas de resultat final, on retourne False.
         if resultat is None:
             return False
 
-        # On marque la partie comme terminee.
+        # On memorise l'etat de fin et on incremente le score.
         self.partie_terminee = True
-        # On incremente le score correspondant au resultat.
         self.scores[resultat] += 1
 
-        # Si resultat nul, message adapte.
+        # Le texte d'information depend du resultat.
         if resultat == "Nul":
             message = "Match nul"
-        # Sinon message de victoire.
         else:
             message = f"Le joueur {resultat} a gagne"
 
-        # On met a jour les labels avec le message final.
         self._mettre_a_jour_labels(message)
-        # On rafraichit l'etat des boutons.
         self._rafraichir_plateau()
 
-        # En cas de match nul, on evite la popup modale (bloquante) et on relance vite.
+        # En cas de nul, on relance automatiquement la partie comme demande precedemment.
         if resultat == "Nul":
-            # On montre un message temporaire puis on relance automatiquement.
             self._mettre_a_jour_labels("Match nul - nouvelle partie...")
             self.root.after(500, self.nouvelle_partie)
             return True
 
-        # Pour une victoire, on garde la popup d'information.
+        # Pour une victoire, on garde une boite de dialogue simple.
         messagebox.showinfo("Fin de partie", message)
-        # On indique a l'appelant que la partie est finie.
         return True
 
-    # Cette methode finalise un tour (humain ou IA) et enchaine si besoin.
     def _finir_tour(self):
-        # Si la partie est terminee apres le coup, on arrete ici.
+        # Si la partie est terminee, rien d'autre n'est a faire.
         if self._verifier_fin():
             return
 
         # Sinon on passe au joueur suivant.
         self.joueur_courant = outils.joueur_suivant(self.joueur_courant)
-        # On met a jour les textes.
         self._mettre_a_jour_labels()
-        # On met a jour les boutons.
         self._rafraichir_plateau()
+        self._initialiser_zone_analyse()
 
-        # Si le prochain joueur est une IA, on lance son tour automatiquement.
+        # Si le nouveau joueur est une IA, on programme son tour.
         if self._types_joueurs()[self.joueur_courant] == "ia":
-            # Petit delai pour rendre l'animation plus naturelle.
             self.root.after(150, self._lancer_tour_ia)
 
-    # Cette methode prepare un tour IA.
     def _lancer_tour_ia(self):
-        # Si la partie est terminee, on ne fait rien.
+        # On securise le lancement pour eviter un double calcul.
         if self.partie_terminee:
             return
-        # Securite: si le joueur courant n'est pas une IA, on ne fait rien.
         if self._types_joueurs()[self.joueur_courant] != "ia":
             return
 
-        # On indique qu'un calcul IA est en cours (bloque les clics humains).
         self.ia_en_cours = True
-        # On affiche un message d'attente.
         self._mettre_a_jour_labels(f"IA {self.joueur_courant} reflechit...")
-        # On met a jour les boutons en mode bloque.
         self._rafraichir_plateau()
-        # On programme l'execution du calcul IA apres un court delai.
         self.root.after(180, self._jouer_coup_ia)
 
-    # Cette methode calcule et applique le coup IA.
     def _jouer_coup_ia(self):
-        # On lit la profondeur choisie par l'utilisateur.
-        profondeur = self.niveau_var.get()
-        # On demande au moteur IA le meilleur coup.
+        # La profondeur de recherche du morpion est directement liee au slider actuel.
+        profondeur = int(round(float(self.niveau_var.get())))
         meilleur_coup, meilleure_note, _ = ia.choisir_meilleur_coup(
-            # Plateau actuel.
             self.plateau,
-            # Joueur qui doit jouer maintenant.
             self.joueur_courant,
-            # Profondeur de recherche.
             profondeur,
         )
 
-        # Le calcul IA est termine.
         self.ia_en_cours = False
-        # Si aucun coup n'est possible, on continue la logique de fin de tour.
         if meilleur_coup is None:
             self._finir_tour()
             return
 
-        # On applique le plateau retourne par l'IA.
+        # Le plateau est remplace par la meilleure position retournee par l'IA.
         self.plateau = meilleur_coup
-        # On affiche la note du coup choisi et le profil de difficulte actif.
         self._mettre_a_jour_labels(
             f"IA {self.joueur_courant} joue (note {meilleure_note}, {ia.nom_niveau(profondeur)})"
         )
-        # On termine le tour apres un petit delai.
         self.root.after(100, self._finir_tour)
 
-    # Cette methode est appelee quand un humain clique une case.
     def clic_case(self, index):
-        # Si le clic n'est pas autorise maintenant, on ignore.
+        # Les clics ne sont acceptes que si le coup est legal.
         if not self._tour_humain_possible():
             return
-        # Si la case est deja occupee, on ignore.
         if self.plateau[index] != outils.VIDE:
             return
 
-        # On place le pion du joueur courant sur la case cliquee.
+        # On pose le pion du joueur humain.
         self.plateau[index] = self.joueur_courant
-        # On termine le tour.
         self._finir_tour()
 
-    # Cette methode est appelee lors d'un changement de mode.
     def _changement_mode(self, _event):
-        # On relance une nouvelle partie avec les nouvelles regles de mode.
+        # Un changement de mode relance une partie propre.
         self.nouvelle_partie()
 
-    # Cette methode est appelee quand le slider de niveau change.
     def _changement_niveau(self, _valeur):
-        # On met juste a jour les labels (pas besoin de reset la partie).
+        # Le changement de niveau ne modifie pas la partie, seulement l'affichage.
         self._mettre_a_jour_labels()
 
-    # Cette methode reinitialise totalement l'etat d'une manche.
+    def _changement_generation(self, _valeur):
+        # L'information du panneau d'analyse est simplement reinitialisee.
+        self._mettre_a_jour_labels()
+        self._initialiser_zone_analyse()
+
+    def _ouvrir_puissance4(self):
+        # On importe ici pour garder `interface.py` independant du module secondaire.
+        import puissance4_interface
+
+        # Si la fenetre existe deja, on la remet juste au premier plan.
+        if self.fenetre_puissance4 is not None and self.fenetre_puissance4.winfo_exists():
+            self.fenetre_puissance4.lift()
+            self.fenetre_puissance4.focus()
+            return
+
+        # Sinon on cree une nouvelle fenetre Puissance 4.
+        self.fenetre_puissance4 = puissance4_interface.Puissance4App(self.root)
+
     def nouvelle_partie(self):
-        # On recree un plateau vide.
+        # La grille revient a l'etat initial.
         self.plateau = outils.plateau_vide()
-        # X recommence au debut de chaque manche.
-        self.joueur_courant = "X"
-        # On remet le drapeau de fin a False.
+        self.joueur_courant = outils.JOUEUR_X
         self.partie_terminee = False
-        # On remet le drapeau IA en cours a False.
         self.ia_en_cours = False
 
-        # On met a jour les textes d'information.
+        # On remet l'affichage a jour.
         self._mettre_a_jour_labels()
-        # On met a jour les boutons du plateau.
         self._rafraichir_plateau()
+        self._initialiser_zone_analyse()
 
-        # Si le mode fait commencer une IA, on lance son tour automatiquement.
+        # En mode IA vs IA, l'IA X commence automatiquement.
         if self._types_joueurs()[self.joueur_courant] == "ia":
             self.root.after(150, self._lancer_tour_ia)
 
 
-# Cette fonction sert de point d'entree du programme.
 def main():
-    # On cree la fenetre principale Tkinter.
-    root = tk.Tk()
-    # On instancie l'application dans cette fenetre.
+    # Point d'entree de l'application.
+    root = ctk.CTk()
     MorpionApp(root)
-    # On demarre la boucle d'evenements Tkinter.
     root.mainloop()
 
 
-# Ce bloc execute main() seulement si ce fichier est lance directement.
 if __name__ == "__main__":
-    # On lance l'application.
     main()

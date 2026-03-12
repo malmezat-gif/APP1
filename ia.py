@@ -183,6 +183,198 @@ def minimax(plateau, joueur_courant, pion_ia, profondeur, alpha=-10_000, beta=10
     return pire
 
 
+# Cette version de Minimax reconstruit aussi une suite de coups optimale.
+def minimax_avec_suite(plateau, joueur_courant, pion_reference, profondeur, alpha=-10_000, beta=10_000):
+    # On verifie si la partie est terminee ou si la profondeur max est atteinte.
+    if profondeur == 0 or regles.verifier_gagnant(plateau) is not None:
+        # Dans ce cas, la suite de coups est vide car on est en feuille.
+        return regles.calcul_score(plateau, pion_reference), []
+
+    # On recupere tous les coups jouables depuis cette position.
+    coups = outils.coups_possibles(plateau)
+
+    # Si le joueur courant est le joueur de reference, on maximise le score.
+    if joueur_courant == pion_reference:
+        # On initialise le meilleur score a une valeur tres faible.
+        meilleur_score = -10_000
+        # On garde ici la meilleure suite de coups rencontree.
+        meilleure_suite = []
+
+        # On teste chaque coup disponible.
+        for case in coups:
+            # On copie le plateau pour simuler le coup.
+            prochain = outils.copier_plateau(plateau)
+            # On joue le coup du joueur courant.
+            prochain[case] = joueur_courant
+            # On evalue recursivement la suite depuis ce nouveau plateau.
+            score, suite = minimax_avec_suite(
+                prochain,
+                outils.joueur_suivant(joueur_courant),
+                pion_reference,
+                profondeur - 1,
+                alpha,
+                beta,
+            )
+            # On construit une suite complete en ajoutant le coup courant au debut.
+            suite_complete = [(joueur_courant, case)] + suite
+
+            # On remplace la meilleure suite si le score est meilleur.
+            if score > meilleur_score:
+                meilleur_score = score
+                meilleure_suite = suite_complete
+            # En cas d'egalite, on prefere la suite la plus courte pour rester lisible.
+            elif score == meilleur_score and (
+                not meilleure_suite or len(suite_complete) < len(meilleure_suite)
+            ):
+                meilleure_suite = suite_complete
+
+            # On met a jour alpha pour l'elagage.
+            alpha = max(alpha, meilleur_score)
+            # Si la branche ne peut plus battre l'autre borne, on coupe.
+            if beta <= alpha:
+                break
+
+        # On retourne le meilleur score et la suite associee.
+        return meilleur_score, meilleure_suite
+
+    # Sinon c'est l'adversaire du joueur de reference, donc on minimise.
+    pire_score = 10_000
+    # On garde la suite associee au pire score pour le joueur de reference.
+    pire_suite = []
+
+    # On teste tous les coups adverses possibles.
+    for case in coups:
+        # On copie le plateau pour ne pas modifier l'original.
+        prochain = outils.copier_plateau(plateau)
+        # On joue le coup de l'adversaire.
+        prochain[case] = joueur_courant
+        # On descend d'un niveau dans l'arbre.
+        score, suite = minimax_avec_suite(
+            prochain,
+            outils.joueur_suivant(joueur_courant),
+            pion_reference,
+            profondeur - 1,
+            alpha,
+            beta,
+        )
+        # On ajoute le coup courant en tete de la suite.
+        suite_complete = [(joueur_courant, case)] + suite
+
+        # On garde la plus mauvaise note pour le joueur de reference.
+        if score < pire_score:
+            pire_score = score
+            pire_suite = suite_complete
+        # A score egal, on prefere encore une suite courte.
+        elif score == pire_score and (not pire_suite or len(suite_complete) < len(pire_suite)):
+            pire_suite = suite_complete
+
+        # On met a jour beta pour l'elagage cote MIN.
+        beta = min(beta, pire_score)
+        # Si la branche n'a plus d'interet, on stoppe.
+        if beta <= alpha:
+            break
+
+    # On retourne le plus mauvais score pour le joueur de reference.
+    return pire_score, pire_suite
+
+
+# Cette fonction collecte les positions d'une generation donnee depuis l'etat courant.
+def analyser_generation(plateau, joueur_courant, profondeur, pion_reference):
+    # On force une profondeur entiere et positive.
+    profondeur = max(0, int(profondeur))
+    # Cette liste recevra toutes les positions atteintes.
+    positions = []
+
+    # Cette fonction interne parcourt l'arbre jusqu'a la generation voulue.
+    def explorer(position, joueur, profondeur_restante, chemin):
+        # On calcule une seule fois l'etat de la position courante.
+        resultat = regles.verifier_gagnant(position)
+        # Si la profondeur demandee est atteinte ou si la partie est finie, on stocke la position.
+        if profondeur_restante == 0 or resultat is not None:
+            positions.append(
+                {
+                    "chemin": list(chemin),
+                    "score": regles.calcul_score(position, pion_reference),
+                    "resultat": resultat,
+                }
+            )
+            return
+
+        # Sinon on essaye tous les coups possibles.
+        for case in outils.coups_possibles(position):
+            # On cree un nouveau plateau pour ce coup.
+            prochain = outils.copier_plateau(position)
+            # On y place le pion du joueur courant.
+            prochain[case] = joueur
+            # On poursuit l'exploration a la generation suivante.
+            explorer(
+                prochain,
+                outils.joueur_suivant(joueur),
+                profondeur_restante - 1,
+                chemin + [(joueur, case)],
+            )
+
+    # On lance l'exploration depuis la position courante.
+    explorer(plateau, joueur_courant, profondeur, [])
+
+    # On trie les positions de la meilleure note vers la moins bonne.
+    positions.sort(
+        key=lambda element: (
+            -element["score"],
+            len(element["chemin"]),
+            [case for _, case in element["chemin"]],
+        )
+    )
+
+    # On extrait toutes les notes pour calculer les bornes.
+    notes = [position["score"] for position in positions]
+    # On retourne un objet simple et lisible pour l'interface.
+    return {
+        "profondeur": profondeur,
+        "pion_reference": pion_reference,
+        "positions": positions,
+        "notes": notes,
+        "minimum": min(notes) if notes else None,
+        "maximum": max(notes) if notes else None,
+    }
+
+
+# Cette fonction cherche une suite ideale menant a une victoire du joueur cible.
+def trouver_suite_gagnante(plateau, joueur_courant, joueur_cible):
+    # On regarde d'abord si la partie est deja terminee.
+    resultat = regles.verifier_gagnant(plateau)
+    # Si la position est deja gagnante pour le joueur cible, aucune recherche n'est necessaire.
+    if resultat == joueur_cible:
+        return {
+            "trouvee": True,
+            "score": 1000,
+            "suite": [],
+            "resultat": resultat,
+        }
+
+    # Si la partie est terminee pour un autre resultat, il n'y a pas de suite gagnante a trouver.
+    if resultat is not None:
+        return {
+            "trouvee": False,
+            "score": regles.calcul_score(plateau, joueur_cible),
+            "suite": [],
+            "resultat": resultat,
+        }
+
+    # La profondeur maximale correspond au nombre de coups restants dans la partie.
+    profondeur = len(outils.coups_possibles(plateau))
+    # On calcule le score optimal et la suite associee du point de vue du joueur cible.
+    score, suite = minimax_avec_suite(plateau, joueur_courant, joueur_cible, profondeur)
+
+    # Une vraie suite gagnante existe si Minimax evalue cette position comme gagnante.
+    return {
+        "trouvee": score == 1000,
+        "score": score,
+        "suite": suite if score == 1000 else [],
+        "resultat": regles.verifier_gagnant(plateau),
+    }
+
+
 # Cette fonction choisit concretement le meilleur coup a jouer.
 def choisir_meilleur_coup(plateau, pion_joueur, niveau):
     # Si la partie est deja terminee, aucun coup n'est possible.

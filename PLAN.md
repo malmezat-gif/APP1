@@ -1,29 +1,32 @@
-# PLAN - APP1 Morpion IA
+# PLAN - APP1 Jeux de plateau
 
 ## 1) Perimetre actuel
-- Jeu de morpion 3x3 avec interface graphique Tkinter uniquement.
-- IA basee sur Minimax avec elagage alpha-beta.
-- Modes de jeu: Joueur vs IA, Joueur vs Joueur, IA vs IA.
-- Difficulte IA de 1 a 9 avec profils:
-  - `Simple` (1-3): erreurs volontaires.
-  - `Intermediaire` (4-8): jeu de plus en plus solide.
-  - `Impossible` (9): recherche complete, tres fort.
+- Morpion avec interface `CustomTkinter`
+- analyse Minimax du morpion :
+  - scores d'une generation donnee
+  - minimum et maximum
+  - suite ideale pour une victoire cible
+- Puissance 4 dans une fenetre secondaire
+- modes disponibles sur les deux jeux :
+  - `Joueur vs IA`
+  - `Joueur vs Joueur`
+  - `IA vs IA`
 
 ## 2) Decoupage technique
-- `interface.py`: gestion UI, tours, statuts, scores et fin de partie.
-- `ia.py`: evaluation des coups et selection selon le profil de niveau.
-- `regles.py`: detection victoire/nul + calcul de score heuristique.
-- `outils.py`: utilitaires (plateau vide, copie, joueur suivant, coups possibles).
+- `interface.py` : fenetre principale du morpion + panneau d'analyse + acces Puissance 4
+- `ia.py` : IA du morpion + fonctions d'analyse
+- `regles.py` : regles et evaluation du morpion
+- `outils.py` : constantes et utilitaires communs
+- `puissance4_interface.py` : interface du Puissance 4
+- `puissance4_ia.py` : IA du Puissance 4
+- `puissance4_regles.py` : regles et evaluation du Puissance 4
 
-## 3) Plan d'action
-1. Stabiliser les regles de jeu et les transitions de tours.
-2. Renforcer le comportement IA par niveau de difficulte.
-3. Assurer une UX fluide (blocages evites, relance auto apres nul).
-4. Maintenir une documentation simple et coherente (README + PLAN).
-
-## 4) Verifications cibles
-- Le jeu se lance avec `python3 interface.py`.
-- Aucun mode terminal n'est present dans le depot.
-- Niveau `Simple`: l'IA commet des erreurs regulieres.
-- Niveau `Impossible`: l'IA ne laisse pas de victoire facile.
-- En cas de match nul: nouvelle partie automatique.
+## 3) Verifications cibles
+- Le projet se lance avec `python3 interface.py`
+- Le morpion reste jouable dans les 3 modes existants
+- Le panneau d'analyse du morpion affiche :
+  - les scores d'une generation
+  - le minimum et le maximum
+  - une suite ideale pour chaque joueur cible
+- Le module Puissance 4 reste accessible depuis la fenetre principale
+- Les deux IA restent d'un niveau pedagogique et raisonnable

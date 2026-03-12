@@ -1,41 +1,73 @@
-# APP1 - Morpion IA (Minimax)
+# APP1 - Morpion IA et Puissance 4
 
-Projet de morpion avec:
-- une interface graphique Tkinter
-- une IA basee sur Minimax (avec elagage alpha-beta)
+Projet Python avec interface graphique `CustomTkinter` autour de deux jeux de plateau :
+- un morpion avec IA Minimax et outils d'analyse
+- un module Puissance 4 avec IA simple a profondeur limitee
 
-## Fichiers
-- `interface.py`: interface graphique
-- `ia.py`: choix du meilleur coup
-- `regles.py`: victoire, nul, score heuristique
-- `outils.py`: fonctions utilitaires
+## Fonctionnalites
 
-## Lancer le jeu
-Depuis le dossier du projet:
+### Morpion
+- mode `Joueur vs IA`
+- mode `Joueur vs Joueur`
+- mode `IA vs IA`
+- difficulte liee a la profondeur de recherche
+- panneau d'analyse integre dans l'interface :
+  - affichage des scores d'une generation donnee
+  - affichage du score minimum et du score maximum
+  - affichage d'une suite ideale pour l'ordinateur ou pour l'adversaire
+
+### Puissance 4
+- ouverture depuis la fenetre principale du morpion
+- mode `Joueur vs IA`
+- mode `Joueur vs Joueur`
+- mode `IA vs IA`
+- difficulte liee a la profondeur de recherche
+
+## Fichiers principaux
+- `interface.py` : fenetre principale du morpion et acces au Puissance 4
+- `ia.py` : IA du morpion + fonctions d'analyse
+- `regles.py` : regles et evaluation du morpion
+- `outils.py` : constantes et utilitaires communs
+- `puissance4_interface.py` : interface du Puissance 4
+- `puissance4_ia.py` : IA du Puissance 4
+- `puissance4_regles.py` : regles et evaluation du Puissance 4
+
+## Installation
+
+Le projet utilise `CustomTkinter`.
+
+Si besoin, installe la dependance avec :
+
+```bash
+python3 -m pip install customtkinter
+```
+
+## Lancer le projet
+
+Depuis le dossier du projet :
 
 ```bash
 python3 interface.py
 ```
 
-## Comment ca marche
-- Le plateau est une liste de 9 cases (`" "`, `"X"`, `"O"`).
-- L'IA teste tous les coups possibles jusqu'a une profondeur choisie.
-- Le score est calcule avec:
-  - `+1000` si l'IA gagne
-  - `-1000` si l'IA perd
-  - `0` si match nul
-  - sinon une heuristique simple sur les lignes ouvertes
+## Utilisation
 
-## Modes de jeu
-- `Joueur vs IA`
-- `Joueur vs Joueur`
-- `IA vs IA`
+### Morpion
+- choisis un mode de jeu
+- regle la difficulte avec le curseur
+- clique sur une case pour jouer
+- utilise le panneau de droite pour :
+  - afficher les scores d'une generation
+  - voir le minimum et le maximum
+  - afficher une suite ideale de coups
 
-## Niveau de difficulte
-Le curseur va de 1 a 9.
-- Niveaux 1 a 3 (`Simple`): l'IA fait volontairement des erreurs et etourderies.
-- Niveaux 4 a 8 (`Intermediaire`): l'IA joue mieux avec de moins en moins d'erreurs.
-- Niveau 9 (`Impossible`): l'IA calcule jusqu'a la fin de partie et devient tres forte.
+### Puissance 4
+- clique sur `Ouvrir Puissance 4`
+- choisis le mode et le niveau
+- clique sur une colonne pour jouer
 
 ## Notes
-Tkinter est inclus avec Python standard sur macOS/Linux/Windows, donc aucune dependance externe n'est necessaire pour l'interface.
+- l'interface du morpion permet une analyse de generation de profondeur `1` a `9`
+- l'IA du morpion reste la plus forte au niveau `9`
+- l'IA du Puissance 4 reste volontairement simple et pedagogique pour convenir a un projet etudiant
+- la fenetre du Puissance 4 peut se faire defiler si l'ecran est petit
